@@ -1,64 +1,82 @@
 import os
 import logging
-from pyspark.sql import DataFrame, SparkSession
-import pyspark.sql.functions as F
+import polars as pl
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def iniciar_spark() -> SparkSession:
-    return SparkSession.builder \
-        .appName("CreditScoreTransformation") \
-        .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
-        .getOrCreate()
 
-def clean_and_transform(df: DataFrame) -> DataFrame:
-    # 1. Elimina duplicidade total de linhas
-    df = df.dropDuplicates()
+def clean_and_transform(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Realiza a limpeza e transformação do DataFrame usando Polars.
+    """
 
+    df = df.unique()
 
-    # 2. Limpeza profunda da coluna 'Age' (somente inteiros válidos)
     colunas_int = ['Age', 'Num_of_Loan', 'Num_of_Delayed_Payment']
-    for coluna in colunas_int:
-        if coluna in df.columns:
-            df = df.withColumn(coluna, F.regexp_replace(F.col(coluna), r"[^0-9]", "").cast("integer"))
-
-    
-    # 3. Limpeza de colunas decimais com o Regex de negação protegendo o ponto flutuante
     colunas_double = [
-        'Annual_Income','Changed_Credit_Limit', 
+        'Annual_Income', 'Changed_Credit_Limit', 
         'Outstanding_Debt', 'Amount_invested_monthly', 'Monthly_Balance'
     ]
 
+
+    exprs = []
+
+    for coluna in colunas_int:
+        if coluna in df.columns:
+            exprs.append(
+                pl.col(coluna)
+                .cast(pl.Utf8)
+                .str.replace_all(r"[^0-9]", "")
+                .cast(pl.Int32, strict=False)
+            )
+
     for coluna in colunas_double:
         if coluna in df.columns:
-            df = df.withColumn(coluna, F.regexp_replace(F.col(coluna), r"[^0-9.]", "").cast("double"))
+            exprs.append(
+                pl.col(coluna)
+                .cast(pl.Utf8)
+                .str.replace_all(r"[^0-9.]", "")
+                .cast(pl.Float64, strict=False)
+            )
 
-    # 4. Tratamento de Valores Nulos gerados pelas strings corrompidas
-    # Preenche idades nulas ou fora do padrão com a mediana da idade do dataset
-    mediana_idade = df.approxQuantile("Age", [0.5], 0.01)[0]
-    df = df.fillna({"Age": int(mediana_idade)})
-    
-    # Demais numéricas nulas são zeradas para não quebrar agregações matemáticas
-    df = df.fillna(0, subset=colunas_double)
+    if exprs:
+        df = df.with_columns(exprs)
+
+
+    if 'Age' in df.columns:
+        mediana_idade = df['Age'].median()
+        val_mediana = int(mediana_idade) if mediana_idade is not None else 0
+        df = df.with_columns(pl.col('Age').fill_null(val_mediana))
+
+
+    colunas_double_presentes = [col for col in colunas_double if col in df.columns]
+    if colunas_double_presentes:
+        df = df.with_columns(
+            [pl.col(col).fill_null(0.0) for col in colunas_double_presentes]
+        )
 
     return df
 
+
 def run_transformation(input_paths: dict, output_base_path: str = "data/processed") -> dict:
-    spark = iniciar_spark()
+    """
+    Lê os arquivos de entrada, aplica a transformação e grava os resultados em formato Parquet.
+    """
     os.makedirs(output_base_path, exist_ok=True)
     processed_paths = {}
 
     for dataset_name, file_path in input_paths.items():
-        logger.info("Processando transformações na base de %s...", dataset_name)
-        df_bruto = spark.read.csv(file_path, header=True, inferSchema=True)
+        logger.info("Processando transformações na base de %s com Polars...", dataset_name)
+        
+        df_bruto = pl.read_csv(file_path, infer_schema_length=10000, ignore_errors=True)
         
         df_limpo = clean_and_transform(df_bruto)
         
         output_path = os.path.join(output_base_path, f"{dataset_name}_cleaned.parquet")
-        # Gravando em formato colunar Parquet otimizado para consultas [cite: 18]
-        df_limpo.write.mode("overwrite").parquet(output_path)
-        logger.info("✔ Base %s limpa e gravada em Parquet.", dataset_name)
-        processed_paths[dataset_name] = output_path
+        df_limpo.write_parquet(output_path)
         
+        logger.info("✔ Base %s limpa e gravada em Parquet em: %s", dataset_name, output_path)
+        processed_paths[dataset_name] = output_path
+
     return processed_paths

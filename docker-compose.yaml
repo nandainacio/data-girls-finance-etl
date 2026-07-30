@@ -5,16 +5,20 @@ x-airflow-common: &airflow-common
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
 
-    # Importa automaticamente as chaves da AWS e do Kaggle do seu arquivo .env
+    - AIRFLOW__WEBSERVER__SECRET_KEY=sua_chave_secreta_qualquer_123456789
+
     - KAGGLE_USERNAME=${KAGGLE_USERNAME}
     - KAGGLE_KEY=${KAGGLE_KEY}
     - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
     - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+
+    - AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT=300
+    - AIRFLOW__WEBSERVER__WORKERS=2
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
     - ./data:/opt/airflow/data
-    - ./data/postgres_data:/var/lib/postgresql/data
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres:

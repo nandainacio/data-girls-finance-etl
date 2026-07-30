@@ -11,7 +11,6 @@ def upload_to_s3(local_path: str, bucket_name: str, s3_file_name: str) -> bool:
     s3 = boto3.client('s3')
     try:
         logger.info("Iniciando upload de %s para S3 (Bucket: %s)...", local_path, bucket_name)
-        # Como o Spark gera pastas Parquet, em cenários reais compactamos ou enviamos o diretório
         s3.upload_file(local_path, bucket_name, s3_file_name)
         logger.info("✔ Upload concluído com sucesso para a Nuvem!")
         return True
@@ -22,7 +21,9 @@ def upload_to_s3(local_path: str, bucket_name: str, s3_file_name: str) -> bool:
         logger.warning("⚠️ AWS Credentials não configuradas no .env. Executando salvamento em Storage Local Simulado.")
         return True
 
-def run_loading(processed_files: dict, bucket_name: str = "datagirls-finance-credit-data"):
+def run_loading(processed_files: dict, bucket_name: str = None):
+    bucket_final = bucket_name or os.getenv("S3_BUCKET_NAME", "data-girls-credit-score-701799127351-sa-east-1-an")
+    
     for dataset_name, path in processed_files.items():
         s3_name = f"processed/{dataset_name}_cleaned.parquet"
-        upload_to_s3(path, bucket_name, s3_name)
+        upload_to_s3(path, bucket_final, s3_name)

@@ -3,7 +3,10 @@ botocore==1.43.49
 jmespath==1.1.0
 jsonpath-ng==1.8.0
 lockfile==0.12.2
+polars==1.43.1
+polars-runtime-32==1.43.1
 pure_eval==0.2.3
+pyarrow==25.0.0
 Pygments==2.20.0
 pygtrie==2.5.0
 python-dateutil==2.9.0.post0

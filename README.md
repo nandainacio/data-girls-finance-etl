@@ -12,13 +12,9 @@ Pipeline de ETL (Extração, Transformação e Carga) automatizado para dados de
 
 ## 📐 Arquitetura da Solução
 
-```mermaid
-flowchart TD
-    A[Kaggle API] -->|Download CSVs Brutos| B(Task 1: extract_raw_data)
-    B -->|Armazena em data/raw/| C(Task 2: transform_polars_data)
-    C -->|Limpeza & Sanitização com Polars| D[Gera arquivos .parquet]
-    D -->|Armazena em data/processed/| E(Task 3: load_to_s3_parquet)
-    E -->|Upload via Boto3| F[(AWS S3 Bucket)]
+<p align="center">
+  <img src="./doc/arquitetura.png" alt="Arquitetura da Solução" width="10%">
+</p>
 
 ---
 

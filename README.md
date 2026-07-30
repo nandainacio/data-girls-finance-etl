@@ -13,7 +13,7 @@ Pipeline de ETL (Extração, Transformação e Carga) automatizado para dados de
 ## 📐 Arquitetura da Solução
 
 <p align="center">
-  <img src="./doc/arquitetura.png" alt="Arquitetura da Solução" width="10%">
+  <img src="./doc/arquitetura.png" alt="Arquitetura da Solução" width="30%">
 </p>
 
 ---
@@ -41,10 +41,12 @@ A DAG `dag_credit_score_etl` é dividida em 3 etapas sequenciais principais:
 3. **`load_to_s3_parquet`:**
    * Utiliza a biblioteca `boto3` para realizar o upload seguro dos arquivos Parquet gerados para o bucket configurado na AWS.
 
+
 ---
 
 ## 📂 Estrutura do Repositório
 
+```text
 ├── dags/
 │   └── credit_score_etl_dag.py   # Definição e orquestração do Airflow
 ├── src/
@@ -56,7 +58,7 @@ A DAG `dag_credit_score_etl` é dividida em 3 etapas sequenciais principais:
 ├── Dockerfile                    # Imagem customizada do Airflow
 ├── requirements.txt              # Dependências Python (polars, boto3, kaggle, etc)
 └── README.md                     # Documentação do projeto
-
+```
 ---
 
 ## 🚀 Como Executar o Projeto
